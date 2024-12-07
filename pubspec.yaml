@@ -29,11 +29,12 @@ environment:
 # versions available, run `flutter pub outdated`.
 dependencies:
   firebase_database: ^10.0.0
-  google_maps_flutter: ^2.1.1
   firebase_core: ^2.16.0
   firebase_auth: ^4.16.0
   cloud_firestore: ^4.10.0
   location: ^5.0.0
+  google_maps_flutter: ^2.2.0
+  geolocator: ^9.0.1
   flutter:
     sdk: flutter
 
