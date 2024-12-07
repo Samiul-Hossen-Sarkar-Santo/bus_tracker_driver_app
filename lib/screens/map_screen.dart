@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
+import 'package:firebase_database/firebase_database.dart';
+import 'dart:async';
 
 class MapScreen extends StatefulWidget {
   @override
@@ -13,10 +15,14 @@ class _MapScreenState extends State<MapScreen> {
   GoogleMapController? _mapController;
 
   bool _isSharingLocation = false;
+  late DatabaseReference _locationRef;
+  StreamSubscription<LocationData>? _locationSubscription;
 
   @override
   void initState() {
     super.initState();
+    _locationRef =
+        FirebaseDatabase.instance.ref().child('Buses/busID1/location');
     _getUserLocation();
   }
 
@@ -63,12 +69,38 @@ class _MapScreenState extends State<MapScreen> {
       _isSharingLocation = !_isSharingLocation;
     });
     if (_isSharingLocation) {
-      // Start sharing the location (send to the database here)
+      // Start sharing the location
+      _startLocationUpdates();
     } else {
       // Show confirmation dialog before stopping
       _showStopSharingDialog();
-      setState(() {
-        _isSharingLocation = !_isSharingLocation;
+      _stopLocationUpdates();
+    }
+  }
+
+  // Start sending location updates continuously
+  void _startLocationUpdates() {
+    _locationSubscription =
+        _locationService.onLocationChanged.listen((locationData) {
+      if (_isSharingLocation) {
+        _currentLocation =
+            LatLng(locationData.latitude!, locationData.longitude!);
+        _sendLocationToFirebase();
+      }
+    });
+  }
+
+  // Stop sending location updates
+  void _stopLocationUpdates() {
+    _locationSubscription?.cancel();
+  }
+
+  // Send current location to Firebase Realtime Database
+  void _sendLocationToFirebase() {
+    if (_currentLocation != null) {
+      _locationRef.update({
+        'lat': _currentLocation!.latitude,
+        'long': _currentLocation!.longitude,
       });
     }
   }
@@ -131,6 +163,13 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   @override
+  void dispose() {
+    // Clean up the location subscription when the widget is disposed
+    _stopLocationUpdates();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -141,6 +180,10 @@ class _MapScreenState extends State<MapScreen> {
           ),
         ),
         backgroundColor: Colors.green[900],
+        centerTitle: true,
+        iconTheme: const IconThemeData(
+          color: Colors.white, // Back button color
+        ),
       ),
       body: Stack(
         children: [
