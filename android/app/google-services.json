@@ -1,0 +1,68 @@
+{
+  "project_info": {
+    "project_number": "71119838777",
+    "firebase_url": "https://bus-tracker-bbaa6-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "bus-tracker-bbaa6",
+    "storage_bucket": "bus-tracker-bbaa6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:71119838777:android:4e83ad350ce3dd6c4d37e8",
+        "android_client_info": {
+          "package_name": "com.bus_tracker_driver_app.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAgodKDPN2hJc8nUoMxiETzoBPDmCWL8Nk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:71119838777:android:f0ce8325eabc00734d37e8",
+        "android_client_info": {
+          "package_name": "com.bus_tracker_user_app.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAgodKDPN2hJc8nUoMxiETzoBPDmCWL8Nk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:71119838777:android:0e041c5b7015f1e04d37e8",
+        "android_client_info": {
+          "package_name": "com.map_integration.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAgodKDPN2hJc8nUoMxiETzoBPDmCWL8Nk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
