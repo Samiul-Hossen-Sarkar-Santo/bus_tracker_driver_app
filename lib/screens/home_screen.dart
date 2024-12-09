@@ -6,9 +6,18 @@ class HomeScreen extends StatefulWidget {
   _HomeScreenState createState() => _HomeScreenState();
 }
 
+String selectedRoute = "BUP-Uttara";
+
 class _HomeScreenState extends State<HomeScreen> {
-  String selectedRoute = "Uttara"; // Default route
-  final List<String> routes = ["Uttara", "Mirpur", "Banani"];
+  final List<String> routes = [
+    "BUP-Uttara",
+    "BUP-JFP-Kakrail",
+    "BUP-Maghbazar-Kakrail",
+    "BUP-Shahbagh",
+    "BUP-Khamar Bari Mor",
+    "BUP-Asad Gate",
+    "BUP-City College",
+  ];
 
   @override
   Widget build(BuildContext context) {

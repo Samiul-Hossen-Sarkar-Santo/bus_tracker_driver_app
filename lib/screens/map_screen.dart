@@ -3,6 +3,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'dart:async';
+import 'package:bus_tracker_driver_app/screens/home_screen.dart';
 
 class MapScreen extends StatefulWidget {
   @override
@@ -18,11 +19,41 @@ class _MapScreenState extends State<MapScreen> {
   late DatabaseReference _locationRef;
   StreamSubscription<LocationData>? _locationSubscription;
 
+  String? getBusId(String selectedRoute) {
+    switch (selectedRoute) {
+      case "BUP-Uttara":
+        print("busId1");
+        return "busID1";
+      case "BUP-JFP-Kakrail":
+        print("busId2");
+        return "busID2";
+      case "BUP-Maghbazar-Kakrail":
+        print("busId3");
+        return "busID3";
+      case "BUP-Shahbagh":
+        print("busId4");
+        return "busID4";
+      case "BUP-Khamar Bari Mor":
+        print("busId5");
+        return "busID5";
+      case "BUP-Asad Gate":
+        print("busId6");
+        return "busID6";
+      case "BUP-City College":
+        print("busId7");
+        return "busID7";
+      default:
+        print("Bus id not found on line 40");
+        return null;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    String? busId = getBusId(selectedRoute);
     _locationRef =
-        FirebaseDatabase.instance.ref().child('Buses/busID1/location');
+        FirebaseDatabase.instance.ref().child('Buses/$busId/location');
     _getUserLocation();
   }
 
@@ -63,18 +94,19 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  // Method to handle location sharing toggle
+  // Method to handle location sharing toggle   ------- eita dekhte hbe abr ittu
   void _toggleLocationSharing() {
     setState(() {
       _isSharingLocation = !_isSharingLocation;
     });
     if (_isSharingLocation) {
-      // Start sharing the location
-      _startLocationUpdates();
+      _startLocationUpdates(); // Start sharing the location
     } else {
-      // Show confirmation dialog before stopping
-      _showStopSharingDialog();
+      _showStopSharingDialog(); // Show confirmation dialog before stopping
       _stopLocationUpdates();
+      setState(() {
+        _isSharingLocation = !_isSharingLocation;
+      });
     }
   }
 
@@ -138,9 +170,10 @@ class _MapScreenState extends State<MapScreen> {
                         });
                         Navigator.of(context).pop();
                       },
-                      child: const Text(
+                      child: Text(
                         'Yes',
-                        style: TextStyle(color: Colors.green, fontSize: 16),
+                        style:
+                            TextStyle(color: Colors.green[200], fontSize: 16),
                       ),
                     ),
                     TextButton(
