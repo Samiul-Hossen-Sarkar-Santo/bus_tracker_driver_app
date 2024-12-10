@@ -44,7 +44,7 @@ dependencies:
   cupertino_icons: ^1.0.8
 
 dev_dependencies:
-  flutter_launcher_icons: ^0.14.2
+  flutter_launcher_icons: ^0.13.1
   flutter_test:
     sdk: flutter
 
@@ -59,7 +59,7 @@ flutter_icons:
   android: true
   ios: true
   remove_alpha_ios: true
-  image_path: "assets/images/BUP_BUS_TRACKER_LOGO.png"
+  image_path: "BUP_Bus_Tracker_Driver_App_Launcher.png"
 
 
 # For information on the generic Dart part of this file, see the

@@ -88,9 +88,9 @@ class _LoadingScreenState extends State<LoadingScreen>
             child: ScaleTransition(
               scale: _scaleAnimation,
               child: Image.asset(
-                'assets/images/BUP_BUS_TRACKER_LOGO.png',
-                width: 150.0,
-                height: 150.0,
+                'assets/images/BUP_Bus_Tracker_Driver_App_Launcher.png',
+                width: 180.0,
+                height: 180.0,
               ),
             ),
           ),
