@@ -36,14 +36,20 @@ class _MapScreenState extends State<MapScreen> {
       case "BUP-Khamar Bari Mor":
         print("busId5");
         return "busID5";
-      case "BUP-Asad Gate":
+      case "BUP-Asad Gate 1":
         print("busId6");
         return "busID6";
-      case "BUP-City College":
+      case "BUP-City College 1":
         print("busId7");
         return "busID7";
+      case "BUP-Asad Gate 2":
+        print("busId8");
+        return "busID8";
+      case "BUP-City College 2":
+        print("busId9");
+        return "busID9";
       default:
-        print("Bus id not found on line 40");
+        print("Bus id not found on line 46");
         return null;
     }
   }
@@ -103,7 +109,6 @@ class _MapScreenState extends State<MapScreen> {
       _startLocationUpdates(); // Start sharing the location
     } else {
       _showStopSharingDialog(); // Show confirmation dialog before stopping
-      _stopLocationUpdates();
       setState(() {
         _isSharingLocation = !_isSharingLocation;
       });
@@ -167,6 +172,8 @@ class _MapScreenState extends State<MapScreen> {
                       onPressed: () {
                         setState(() {
                           _isSharingLocation = false;
+                          _stopLocationUpdates();
+                          print("Stopping location sharing on line 176!");
                         });
                         Navigator.of(context).pop();
                       },
