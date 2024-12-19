@@ -17,6 +17,7 @@ class _MapScreenState extends State<MapScreen> {
 
   bool _isSharingLocation = false;
   late DatabaseReference _locationRef;
+  late DatabaseReference _statusRef;
   StreamSubscription<LocationData>? _locationSubscription;
 
   String? getBusId(String selectedRoute) {
@@ -60,6 +61,9 @@ class _MapScreenState extends State<MapScreen> {
     String? busId = getBusId(selectedRoute);
     _locationRef =
         FirebaseDatabase.instance.ref().child('Buses/$busId/location');
+    _statusRef = FirebaseDatabase.instance.ref().child('Buses/$busId/status');
+
+    _locationService.enableBackgroundMode(enable: true);
     _getUserLocation();
   }
 
@@ -106,6 +110,7 @@ class _MapScreenState extends State<MapScreen> {
       _isSharingLocation = !_isSharingLocation;
     });
     if (_isSharingLocation) {
+      _statusRef.update({'status': true}); // Update bus status to active
       _startLocationUpdates(); // Start sharing the location
     } else {
       _showStopSharingDialog(); // Show confirmation dialog before stopping
@@ -172,6 +177,7 @@ class _MapScreenState extends State<MapScreen> {
                       onPressed: () {
                         setState(() {
                           _isSharingLocation = false;
+                          _statusRef.update({'status': false});
                           _stopLocationUpdates();
                           print("Stopping location sharing on line 176!");
                         });
@@ -206,6 +212,8 @@ class _MapScreenState extends State<MapScreen> {
   void dispose() {
     // Clean up the location subscription when the widget is disposed
     _stopLocationUpdates();
+
+    _locationService.enableBackgroundMode(enable: false);
     super.dispose();
   }
 
