@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:location/location.dart';
+import 'package:location/location.dart' as loc;
 import 'package:firebase_database/firebase_database.dart';
 import 'dart:async';
 import 'package:bus_tracker_driver_app/screens/home_screen.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class MapScreen extends StatefulWidget {
   @override
@@ -11,14 +12,14 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  final Location _locationService = Location();
+  final loc.Location _locationService = loc.Location();
   LatLng? _currentLocation;
   GoogleMapController? _mapController;
 
   bool _isSharingLocation = false;
   late DatabaseReference _locationRef;
   late DatabaseReference _statusRef;
-  StreamSubscription<LocationData>? _locationSubscription;
+  StreamSubscription<loc.LocationData>? _locationSubscription;
 
   String? getBusId(String selectedRoute) {
     switch (selectedRoute) {
@@ -61,7 +62,7 @@ class _MapScreenState extends State<MapScreen> {
     String? busId = getBusId(selectedRoute);
     _locationRef =
         FirebaseDatabase.instance.ref().child('Buses/$busId/location');
-    _statusRef = FirebaseDatabase.instance.ref().child('Buses/$busId/status');
+    _statusRef = FirebaseDatabase.instance.ref().child('Buses/$busId');
 
     _locationService.enableBackgroundMode(enable: true);
     _getUserLocation();
@@ -76,11 +77,20 @@ class _MapScreenState extends State<MapScreen> {
         if (!_serviceEnabled) return;
       }
 
-      PermissionStatus _permissionGranted =
+      loc.PermissionStatus _permissionGranted =
           await _locationService.hasPermission();
-      if (_permissionGranted == PermissionStatus.denied) {
+      if (_permissionGranted == loc.PermissionStatus.denied) {
         _permissionGranted = await _locationService.requestPermission();
-        if (_permissionGranted != PermissionStatus.granted) return;
+        if (_permissionGranted != loc.PermissionStatus.granted) {}
+        ;
+      }
+      if (await Permission.locationWhenInUse.isGranted) {
+        final backgroundPermissionStatus =
+            await Permission.locationAlways.request();
+        if (!backgroundPermissionStatus.isGranted) {
+          _showPermissionDialog();
+          return;
+        }
       }
 
       final locationData = await _locationService.getLocation();
@@ -102,6 +112,33 @@ class _MapScreenState extends State<MapScreen> {
     } catch (e) {
       print("Error retrieving location: $e");
     }
+  }
+
+  void _showPermissionDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Background Location Permission Required'),
+          content: const Text(
+            'To share your location in the background, please enable background location access in your device settings.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                await openAppSettings();
+                Navigator.pop(context);
+              },
+              child: const Text('Open Settings'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // Method to handle location sharing toggle   ------- eita dekhte hbe abr ittu
