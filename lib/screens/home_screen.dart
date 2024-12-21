@@ -24,6 +24,8 @@ class _HomeScreenState extends State<HomeScreen> {
     "BUP-Asad Gate 2",
     "BUP-City College 1",
     "BUP-City College 2",
+    "BUP-Jahangir Gate 1",
+    "BUP-Jahangir Gate 2",
   ];
 
   @override
