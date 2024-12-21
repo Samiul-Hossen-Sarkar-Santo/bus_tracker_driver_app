@@ -6,15 +6,20 @@ class HomeScreen extends StatefulWidget {
   _HomeScreenState createState() => _HomeScreenState();
 }
 
-String selectedRoute = "BUP-Uttara";
+String selectedRoute = "BUP-Uttara 1";
 
 class _HomeScreenState extends State<HomeScreen> {
   final List<String> routes = [
-    "BUP-Uttara",
-    "BUP-JFP-Kakrail",
-    "BUP-Maghbazar-Kakrail",
-    "BUP-Shahbagh",
-    "BUP-Khamar Bari Mor",
+    "BUP-Uttara 1",
+    "BUP-Uttara 2",
+    "BUP-JFP-Kakrail 1",
+    "BUP-JFP-Kakrail 2",
+    "BUP-Maghbazar-Kakrail 1",
+    "BUP-Maghbazar-Kakrail 2",
+    "BUP-Shahbagh 1",
+    "BUP-Shahbagh 2",
+    "BUP-Khamar Bari Mor 1",
+    "BUP-Khamar Bari Mor 2",
     "BUP-Asad Gate 1",
     "BUP-Asad Gate 2",
     "BUP-City College 1",
@@ -48,27 +53,36 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 20),
               SizedBox(
-                width: 250, // Set the desired width
-                child: DropdownButton<String>(
-                  value: selectedRoute,
-                  isExpanded: true,
-                  icon: const Icon(Icons.arrow_drop_down, color: Colors.green),
-                  borderRadius: BorderRadius.circular(15),
-                  dropdownColor: Colors.white,
-                  items: routes
-                      .map((route) => DropdownMenuItem(
-                            value: route,
-                            child: Text(
-                              route,
-                              style: const TextStyle(fontSize: 16),
-                            ),
-                          ))
-                      .toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedRoute = value!;
-                    });
-                  },
+                width: 260, // Set the desired width
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: Colors.grey,
+                    ),
+                  ),
+                  child: DropdownButton<String>(
+                    value: selectedRoute,
+                    isExpanded: true,
+                    icon: Icon(Icons.arrow_drop_down, color: Colors.grey[600]),
+                    borderRadius: BorderRadius.circular(15),
+                    dropdownColor: Colors.white,
+                    items: routes
+                        .map((route) => DropdownMenuItem(
+                              value: route,
+                              child: Text(
+                                route,
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                            ))
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        selectedRoute = value!;
+                      });
+                    },
+                  ),
                 ),
               ),
               const SizedBox(height: 50),

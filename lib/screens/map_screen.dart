@@ -23,21 +23,36 @@ class _MapScreenState extends State<MapScreen> {
 
   String? getBusId(String selectedRoute) {
     switch (selectedRoute) {
-      case "BUP-Uttara":
+      case "BUP-Uttara 1":
         print("busId1");
         return "busID1";
-      case "BUP-JFP-Kakrail":
+      case "BUP-Uttara 2":
+        print("busId10");
+        return "busID10";
+      case "BUP-JFP-Kakrail 1":
         print("busId2");
         return "busID2";
-      case "BUP-Maghbazar-Kakrail":
+      case "BUP-JFP-Kakrail 2":
+        print("busId11");
+        return "busID11";
+      case "BUP-Maghbazar-Kakrail 1":
         print("busId3");
         return "busID3";
-      case "BUP-Shahbagh":
+      case "BUP-Maghbazar-Kakrail 2":
+        print("busId12");
+        return "busID12";
+      case "BUP-Shahbagh 1":
         print("busId4");
         return "busID4";
-      case "BUP-Khamar Bari Mor":
+      case "BUP-Shahbagh 2":
+        print("busId13");
+        return "busID13";
+      case "BUP-Khamar Bari Mor 1":
         print("busId5");
         return "busID5";
+      case "BUP-Khamar Bari Mor 2":
+        print("busId14");
+        return "busID14";
       case "BUP-Asad Gate 1":
         print("busId6");
         return "busID6";
@@ -51,7 +66,7 @@ class _MapScreenState extends State<MapScreen> {
         print("busId9");
         return "busID9";
       default:
-        print("Bus id not found on line 46");
+        print("Bus id not found on line 69");
         return null;
     }
   }
@@ -65,6 +80,12 @@ class _MapScreenState extends State<MapScreen> {
     _statusRef = FirebaseDatabase.instance.ref().child('Buses/$busId');
 
     _locationService.enableBackgroundMode(enable: true);
+    _locationService.changeNotificationOptions(
+      channelName: 'location_tracking',
+      title: 'You\'re sharing your location.',
+      onTapBringToFront: true,
+      iconName: 'ic_launcher.png',
+    );
     _getUserLocation();
   }
 
