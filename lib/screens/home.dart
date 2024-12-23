@@ -1,0 +1,138 @@
+import 'package:bus_tracker_driver_app/screens/map_screen.dart';
+import 'package:flutter/material.dart';
+
+class Home extends StatefulWidget {
+  @override
+  _HomeState createState() => _HomeState();
+}
+
+String selectedRoute = "";
+
+class _HomeState extends State<Home> {
+  final List<String> routes = [
+    "BUP-Uttara",
+    "BUP-JFP-Kakrail",
+    "BUP-Maghbazar-Kakrail",
+    "BUP-Shahbagh",
+    "BUP-Khamar Bari Mor",
+    "BUP-Asad Gate",
+    "BUP-City College",
+    "BUP-Jahangir Gate",
+  ];
+  final List<String> routesInBangla = [
+    "উত্তরা",
+    "জেএফপি-কাকরাইল",
+    "মগবাজার-কাকরাইল",
+    "শাহবাগ",
+    "খামার বাড়ি মোর",
+    "আসাদ গেট",
+    "সিটি কলেজ",
+    "জাহাঙ্গীর গেট",
+  ];
+
+  void routeNameConversion(int index, int id) {
+    setState(() {
+      selectedRoute = "${routes[index]} $id";
+      print("Selected Route: $selectedRoute");
+    });
+    // Start sharing location directly
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => MapScreen(startSharing: true)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Padding(
+          padding: EdgeInsets.only(top: 10.0),
+          child: Text(
+            'রুট নির্বাচন করুন',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 25.0,
+            ),
+          ),
+        ),
+        backgroundColor: Colors.green[900],
+        centerTitle: true,
+        iconTheme: const IconThemeData(
+          color: Colors.white, // Back button color
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.only(top: 20.0, left: 10.0, right: 10.0),
+        child: GridView.builder(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2, // 2 cards per row
+            mainAxisSpacing: 26.0,
+            crossAxisSpacing: 10.0,
+            childAspectRatio: 3 / 2, // Aspect ratio for cards
+          ),
+          itemCount: routesInBangla.length, // Ensure only 8 items are displayed
+          itemBuilder: (context, index) {
+            final route = routesInBangla[index];
+            return Card(
+              color: Colors.green[50], //  as const
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(5.0),
+              ),
+              elevation: 2.5,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    route,
+                    style: TextStyle(
+                      color: Colors.green[800],
+                      fontWeight: FontWeight.bold,
+                      fontSize: 17.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton(
+                        style: ButtonStyle(
+                          elevation: const WidgetStatePropertyAll(2),
+                          shadowColor:
+                              const WidgetStatePropertyAll(Colors.black),
+                          backgroundColor:
+                              WidgetStateProperty.all(Colors.white),
+                        ),
+                        onPressed: () {
+                          routeNameConversion(index, 1);
+                        },
+                        child: const Text("১ম"),
+                      ),
+                      const SizedBox(width: 10),
+                      ElevatedButton(
+                        style: ButtonStyle(
+                          elevation: const WidgetStatePropertyAll(2),
+                          shadowColor:
+                              const WidgetStatePropertyAll(Colors.black),
+                          backgroundColor:
+                              WidgetStateProperty.all(Colors.white),
+                        ),
+                        onPressed: () {
+                          routeNameConversion(index, 2);
+                        },
+                        child: const Text("২য়"),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+      backgroundColor: Colors.grey[200],
+    );
+  }
+}

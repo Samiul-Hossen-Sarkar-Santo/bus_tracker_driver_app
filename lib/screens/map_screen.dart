@@ -3,10 +3,14 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart' as loc;
 import 'package:firebase_database/firebase_database.dart';
 import 'dart:async';
-import 'package:bus_tracker_driver_app/screens/home_screen.dart';
+import 'package:bus_tracker_driver_app/screens/home.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class MapScreen extends StatefulWidget {
+  final bool startSharing;
+
+  MapScreen({this.startSharing = false});
+
   @override
   _MapScreenState createState() => _MapScreenState();
 }
@@ -88,11 +92,16 @@ class _MapScreenState extends State<MapScreen> {
     _locationService.enableBackgroundMode(enable: true);
     _locationService.changeNotificationOptions(
       channelName: 'location_tracking',
-      title: 'You\'re sharing your location.',
+      title: 'আপনি লোকেশন শেয়ার করছেন',
       onTapBringToFront: true,
       iconName: 'ic_launcher.png',
     );
     _getUserLocation();
+
+    // Start sharing location if startSharing is true
+    if (widget.startSharing) {
+      _toggleLocationSharing();
+    }
   }
 
   // Fetch the user's current location
@@ -109,7 +118,6 @@ class _MapScreenState extends State<MapScreen> {
       if (_permissionGranted == loc.PermissionStatus.denied) {
         _permissionGranted = await _locationService.requestPermission();
         if (_permissionGranted != loc.PermissionStatus.granted) {}
-        ;
       }
       if (await Permission.locationWhenInUse.isGranted) {
         final backgroundPermissionStatus =

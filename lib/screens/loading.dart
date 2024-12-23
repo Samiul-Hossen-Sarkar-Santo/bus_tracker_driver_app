@@ -1,4 +1,4 @@
-import 'package:bus_tracker_driver_app/screens/home_screen.dart';
+import 'package:bus_tracker_driver_app/screens/home.dart';
 import 'package:flutter/material.dart';
 
 class LoadingScreen extends StatefulWidget {
@@ -48,7 +48,7 @@ class _LoadingScreenState extends State<LoadingScreen>
     Future.delayed(const Duration(seconds: 4), () {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => HomeScreen()),
+        MaterialPageRoute(builder: (context) => Home()),
       );
     });
   }
