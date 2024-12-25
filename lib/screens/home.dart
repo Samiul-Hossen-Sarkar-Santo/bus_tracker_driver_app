@@ -38,7 +38,7 @@ class _HomeState extends State<Home> {
     // Start sharing location directly
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => MapScreen(startSharing: true)),
+      MaterialPageRoute(builder: (context) => MapScreen()),
     );
   }
 
@@ -70,7 +70,7 @@ class _HomeState extends State<Home> {
             crossAxisCount: 2, // 2 cards per row
             mainAxisSpacing: 26.0,
             crossAxisSpacing: 10.0,
-            childAspectRatio: 3 / 2, // Aspect ratio for cards
+            childAspectRatio: 1.2, // Aspect ratio for cards
           ),
           itemCount: routesInBangla.length, // Ensure only 8 items are displayed
           itemBuilder: (context, index) {
@@ -84,16 +84,23 @@ class _HomeState extends State<Home> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    route,
-                    style: TextStyle(
-                      color: Colors.green[800],
-                      fontWeight: FontWeight.bold,
-                      fontSize: 17.5,
+                  Container(
+                    constraints: const BoxConstraints(
+                      maxHeight: 60,
                     ),
-                    textAlign: TextAlign.center,
+                    height: 60,
+                    padding: const EdgeInsets.all(8),
+                    alignment: Alignment.center,
+                    child: Text(
+                      route,
+                      style: TextStyle(
+                        color: Colors.green[800],
+                        fontWeight: FontWeight.bold,
+                        fontSize: 17,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
-                  const SizedBox(height: 10),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [

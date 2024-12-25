@@ -1,29 +1,25 @@
+import 'package:bus_tracker_driver_app/screens/home.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:location/location.dart' as loc;
+import 'package:location/location.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'dart:async';
-import 'package:bus_tracker_driver_app/screens/home.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:permission_handler/permission_handler.dart' as perms;
 
 class MapScreen extends StatefulWidget {
-  final bool startSharing;
-
-  MapScreen({this.startSharing = false});
-
   @override
   _MapScreenState createState() => _MapScreenState();
 }
 
 class _MapScreenState extends State<MapScreen> {
-  final loc.Location _locationService = loc.Location();
+  final Location _locationService = Location();
   LatLng? _currentLocation;
   GoogleMapController? _mapController;
 
   bool _isSharingLocation = false;
   late DatabaseReference _locationRef;
   late DatabaseReference _statusRef;
-  StreamSubscription<loc.LocationData>? _locationSubscription;
+  StreamSubscription<LocationData>? _locationSubscription;
 
   String? getBusId(String selectedRoute) {
     switch (selectedRoute) {
@@ -92,16 +88,16 @@ class _MapScreenState extends State<MapScreen> {
     _locationService.enableBackgroundMode(enable: true);
     _locationService.changeNotificationOptions(
       channelName: 'location_tracking',
-      title: 'আপনি লোকেশন শেয়ার করছেন',
+      title: 'লোকেশন শেয়ার চালু আছে',
       onTapBringToFront: true,
-      iconName: 'ic_launcher.png',
+      iconName: 'BUP_Bus_Tracker_icon',
+    );
+    _locationService.changeSettings(
+      accuracy: LocationAccuracy.high,
+      interval: 100,
+      distanceFilter: 1,
     );
     _getUserLocation();
-
-    // Start sharing location if startSharing is true
-    if (widget.startSharing) {
-      _toggleLocationSharing();
-    }
   }
 
   // Fetch the user's current location
@@ -113,15 +109,16 @@ class _MapScreenState extends State<MapScreen> {
         if (!_serviceEnabled) return;
       }
 
-      loc.PermissionStatus _permissionGranted =
+      PermissionStatus _permissionGranted =
           await _locationService.hasPermission();
-      if (_permissionGranted == loc.PermissionStatus.denied) {
+      if (_permissionGranted == PermissionStatus.denied) {
         _permissionGranted = await _locationService.requestPermission();
-        if (_permissionGranted != loc.PermissionStatus.granted) {}
+        if (_permissionGranted != PermissionStatus.granted) {}
+        ;
       }
-      if (await Permission.locationWhenInUse.isGranted) {
+      if (await perms.Permission.locationWhenInUse.isGranted) {
         final backgroundPermissionStatus =
-            await Permission.locationAlways.request();
+            await perms.Permission.locationAlways.request();
         if (!backgroundPermissionStatus.isGranted) {
           _showPermissionDialog();
           return;
@@ -165,7 +162,7 @@ class _MapScreenState extends State<MapScreen> {
             ),
             TextButton(
               onPressed: () async {
-                await openAppSettings();
+                await perms.openAppSettings();
                 Navigator.pop(context);
               },
               child: const Text('Open Settings'),
@@ -232,12 +229,12 @@ class _MapScreenState extends State<MapScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
-                  'Stop sharing location',
+                  'লোকেশন শেয়ার বন্ধ করুন',
                   style: TextStyle(color: Colors.white, fontSize: 18),
                 ),
                 const SizedBox(height: 15),
                 const Text(
-                  'Are you sure you want to stop sharing your location?',
+                  'আপনি কি নিশ্চিত যে আপনি লোকেশন শেয়ার বন্ধ করতে চান?',
                   style: TextStyle(color: Colors.white, fontSize: 16),
                   textAlign: TextAlign.center,
                 ),
@@ -256,7 +253,7 @@ class _MapScreenState extends State<MapScreen> {
                         Navigator.of(context).pop();
                       },
                       child: Text(
-                        'Yes',
+                        'হ্যাঁ',
                         style:
                             TextStyle(color: Colors.green[200], fontSize: 16),
                       ),
@@ -266,7 +263,7 @@ class _MapScreenState extends State<MapScreen> {
                         Navigator.of(context).pop();
                       },
                       child: const Text(
-                        'No',
+                        'না',
                         style: TextStyle(color: Colors.red, fontSize: 16),
                       ),
                     ),
@@ -289,69 +286,144 @@ class _MapScreenState extends State<MapScreen> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Driver Map',
-          style: TextStyle(
-            color: Colors.white,
-          ),
-        ),
-        backgroundColor: Colors.green[900],
-        centerTitle: true,
-        iconTheme: const IconThemeData(
-          color: Colors.white, // Back button color
-        ),
-      ),
-      body: Stack(
-        children: [
-          _currentLocation == null
-              ? const Center(child: CircularProgressIndicator())
-              : GoogleMap(
-                  initialCameraPosition: CameraPosition(
-                    target: _currentLocation!,
-                    zoom: 14.0,
-                  ),
-                  myLocationEnabled: true,
-                  myLocationButtonEnabled: true,
-                  onMapCreated: (controller) {
-                    _mapController = controller;
-                  },
-                ),
-          Positioned(
-            bottom: 16, // Adjust this value to move the button up/down
-            left: 16, // Adjust left value for horizontal positioning
-            right: 16, // Ensure button is centered horizontally
-            child: InkWell(
-              onTap: null, // Handle tap event
-              splashColor: Colors.black.withOpacity(0.8), // Light splash effect
-              borderRadius:
-                  BorderRadius.circular(20), // Match button's border radius
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 50, vertical: 35),
-                child: ElevatedButton(
-                  onPressed: _toggleLocationSharing,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        _isSharingLocation ? Colors.red : Colors.green,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 30, vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+  Future<bool> _onWillPop() async {
+    final bool? shouldGoBack = await showDialog<bool>(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.black, // Dark theme for dialog
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'লোকেশন শেয়ার বন্ধ করুন',
+                style: TextStyle(color: Colors.white, fontSize: 18),
+              ),
+              const SizedBox(height: 15),
+              const Text(
+                'আপনি কি নিশ্চিত যে আপনি লোকেশন শেয়ার বন্ধ করতে চান?',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _isSharingLocation = false;
+                        _statusRef.update({'status': false});
+                        _stopLocationUpdates();
+                        print("Stopping location sharing on line 176!");
+                      });
+                      Navigator.of(context).pop();
+                    },
+                    child: Text(
+                      'হ্যাঁ',
+                      style: TextStyle(color: Colors.green[200], fontSize: 16),
                     ),
                   ),
-                  child: Text(
-                    _isSharingLocation ? 'Stop Sharing' : 'Start Sharing',
-                    style: const TextStyle(fontSize: 16, color: Colors.white),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: const Text(
+                      'না',
+                      style: TextStyle(color: Colors.red, fontSize: 16),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (shouldGoBack == true) {
+      _stopLocationUpdates();
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return WillPopScope(
+      onWillPop: () async {
+        if (_isSharingLocation) {
+          return await _onWillPop();
+        } else {
+          Navigator.pop(context);
+          return Future.value(false); // Ensure a Future<bool> is returned
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            'Driver Map',
+            style: TextStyle(
+              color: Colors.white,
+            ),
+          ),
+          backgroundColor: Colors.green[900],
+          centerTitle: true,
+          iconTheme: const IconThemeData(
+            color: Colors.white, // Back button color
+          ),
+        ),
+        body: Stack(
+          children: [
+            _currentLocation == null
+                ? const Center(child: CircularProgressIndicator())
+                : GoogleMap(
+                    initialCameraPosition: CameraPosition(
+                      target: _currentLocation!,
+                      zoom: 14.0,
+                    ),
+                    myLocationEnabled: true,
+                    myLocationButtonEnabled: true,
+                    onMapCreated: (controller) {
+                      _mapController = controller;
+                    },
+                  ),
+            Positioned(
+              bottom: 16, // Adjust this value to move the button up/down
+              left: 16, // Adjust left value for horizontal positioning
+              right: 16, // Ensure button is centered horizontally
+              child: InkWell(
+                onTap: null, // Handle tap event
+                splashColor:
+                    Colors.black.withOpacity(0.8), // Light splash effect
+                borderRadius:
+                    BorderRadius.circular(20), // Match button's border radius
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 50, vertical: 35),
+                  child: ElevatedButton(
+                    onPressed: _toggleLocationSharing,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          _isSharingLocation ? Colors.red : Colors.green,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 30, vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                    child: Text(
+                      _isSharingLocation ? 'Stop Sharing' : 'Start Sharing',
+                      style: const TextStyle(fontSize: 16, color: Colors.white),
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
