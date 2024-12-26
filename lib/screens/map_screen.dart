@@ -80,6 +80,7 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
+
     String? busId = getBusId(selectedRoute);
     _locationRef =
         FirebaseDatabase.instance.ref().child('Buses/$busId/location');
@@ -90,12 +91,7 @@ class _MapScreenState extends State<MapScreen> {
       channelName: 'location_tracking',
       title: 'লোকেশন শেয়ার চালু আছে',
       onTapBringToFront: true,
-      iconName: 'BUP_Bus_Tracker_icon',
-    );
-    _locationService.changeSettings(
-      accuracy: LocationAccuracy.high,
-      interval: 100,
-      distanceFilter: 1,
+      iconName: 'driver_app_icon',
     );
     _getUserLocation();
   }
