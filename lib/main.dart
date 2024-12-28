@@ -1,3 +1,4 @@
+import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:bus_tracker_driver_app/screens/loading.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -5,6 +6,21 @@ import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  AwesomeNotifications().initialize(
+    null,
+    [
+      NotificationChannel(
+        channelKey: 'location_tracking',
+        channelName: 'Location Tracking',
+        channelDescription: 'Notification channel for location tracking',
+        defaultColor: const Color(0xFF9D50DD),
+        ledColor: const Color(0xFF9D50DD),
+        playSound: true,
+        enableVibration: true,
+      ),
+    ],
+    debug: true,
+  );
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,

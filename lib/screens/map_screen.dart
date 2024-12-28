@@ -1,3 +1,4 @@
+import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:bus_tracker_driver_app/screens/home.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -5,6 +6,7 @@ import 'package:location/location.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'dart:async';
 import 'package:permission_handler/permission_handler.dart' as perms;
+import 'package:awesome_notifications/android_foreground_service.dart';
 
 class MapScreen extends StatefulWidget {
   @override
@@ -24,55 +26,39 @@ class _MapScreenState extends State<MapScreen> {
   String? getBusId(String selectedRoute) {
     switch (selectedRoute) {
       case "BUP-Uttara 1":
-        print("busId1");
         return "busID1";
       case "BUP-Uttara 2":
-        print("busId2");
         return "busID2";
       case "BUP-JFP-Kakrail 1":
-        print("busId3");
         return "busID3";
       case "BUP-JFP-Kakrail 2":
-        print("busId4");
         return "busID4";
       case "BUP-Maghbazar-Kakrail 1":
-        print("busId5");
         return "busID5";
       case "BUP-Maghbazar-Kakrail 2":
-        print("busId6");
         return "busID6";
       case "BUP-Shahbagh 1":
-        print("busId7");
         return "busID7";
       case "BUP-Shahbagh 2":
-        print("busId8");
         return "busID8";
       case "BUP-Khamar Bari Mor 1":
-        print("busId9");
         return "busID9";
       case "BUP-Khamar Bari Mor 2":
-        print("busId10");
         return "busID10";
       case "BUP-Asad Gate 1":
-        print("busId11");
         return "busID11";
       case "BUP-City College 1":
-        print("busId12");
         return "busID12";
       case "BUP-Asad Gate 2":
-        print("busId13");
         return "busID13";
       case "BUP-City College 2":
-        print("busId14");
         return "busID14";
       case "BUP-Jahangir Gate 1":
-        print("busId15");
         return "busID15";
       case "BUP-Jahangir Gate 2":
-        print("busId16");
         return "busID16";
       default:
-        print("Bus id not found on line 69");
+        print("Bus id not found");
         return null;
     }
   }
@@ -80,6 +66,12 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
+
+    AwesomeNotifications().isNotificationAllowed().then((isAllowed) {
+      if (!isAllowed) {
+        AwesomeNotifications().requestPermissionToSendNotifications();
+      }
+    });
 
     String? busId = getBusId(selectedRoute);
     _locationRef =
@@ -110,7 +102,6 @@ class _MapScreenState extends State<MapScreen> {
       if (_permissionGranted == PermissionStatus.denied) {
         _permissionGranted = await _locationService.requestPermission();
         if (_permissionGranted != PermissionStatus.granted) {}
-        ;
       }
       if (await perms.Permission.locationWhenInUse.isGranted) {
         final backgroundPermissionStatus =
@@ -169,7 +160,21 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  // Method to handle location sharing toggle   ------- eita dekhte hbe abr ittu
+  triggerNotification() {
+    AndroidForegroundService.startAndroidForegroundService(
+      foregroundStartMode: ForegroundStartMode.stick,
+      foregroundServiceType: ForegroundServiceType.location,
+      content: NotificationContent(
+        id: 10,
+        channelKey: 'location_tracking',
+        title: 'লোকেশন শেয়ার চালু আছে',
+        body: 'আপনার বাস এখন লোকেশন শেয়ার করছে।',
+        category: NotificationCategory.Service,
+      ),
+    );
+  }
+
+  // Method to handle location sharing toggle
   void _toggleLocationSharing() {
     setState(() {
       _isSharingLocation = !_isSharingLocation;
@@ -187,6 +192,7 @@ class _MapScreenState extends State<MapScreen> {
 
   // Start sending location updates continuously
   void _startLocationUpdates() {
+    triggerNotification();
     _locationSubscription =
         _locationService.onLocationChanged.listen((locationData) {
       if (_isSharingLocation) {
@@ -199,6 +205,7 @@ class _MapScreenState extends State<MapScreen> {
 
   // Stop sending location updates
   void _stopLocationUpdates() {
+    AwesomeNotifications().cancel(10);
     _locationSubscription?.cancel();
   }
 
@@ -217,12 +224,12 @@ class _MapScreenState extends State<MapScreen> {
     showDialog(
       context: context,
       builder: (context) {
-        return dialoguePromt();
+        return dialogPrompt();
       },
     );
   }
 
-  Widget dialoguePromt() {
+  Widget dialogPrompt() {
     return Dialog(
       backgroundColor: Colors.black, // Dark theme for dialog
       child: Padding(
@@ -250,7 +257,6 @@ class _MapScreenState extends State<MapScreen> {
                       _isSharingLocation = false;
                       _statusRef.update({'status': false});
                       _stopLocationUpdates();
-                      print("Stopping location sharing on line 176!");
                     });
                     Navigator.of(context).pop();
                   },
@@ -288,7 +294,7 @@ class _MapScreenState extends State<MapScreen> {
   Future<bool> _onWillPop() async {
     final bool? shouldGoBack = await showDialog<bool>(
       context: context,
-      builder: (context) => dialoguePromt(),
+      builder: (context) => dialogPrompt(),
     );
 
     if (shouldGoBack == true) {
