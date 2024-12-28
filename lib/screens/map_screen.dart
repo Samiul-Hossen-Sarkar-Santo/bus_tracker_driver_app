@@ -217,59 +217,62 @@ class _MapScreenState extends State<MapScreen> {
     showDialog(
       context: context,
       builder: (context) {
-        return Dialog(
-          backgroundColor: Colors.black, // Dark theme for dialog
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+        return dialoguePromt();
+      },
+    );
+  }
+
+  Widget dialoguePromt() {
+    return Dialog(
+      backgroundColor: Colors.black, // Dark theme for dialog
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'লোকেশন শেয়ার বন্ধ করুন',
+              style: TextStyle(color: Colors.white, fontSize: 18),
+            ),
+            const SizedBox(height: 15),
+            const Text(
+              'আপনি কি নিশ্চিত যে আপনি লোকেশন শেয়ার বন্ধ করতে চান?',
+              style: TextStyle(color: Colors.white, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                const Text(
-                  'লোকেশন শেয়ার বন্ধ করুন',
-                  style: TextStyle(color: Colors.white, fontSize: 18),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _isSharingLocation = false;
+                      _statusRef.update({'status': false});
+                      _stopLocationUpdates();
+                      print("Stopping location sharing on line 176!");
+                    });
+                    Navigator.of(context).pop();
+                  },
+                  child: Text(
+                    'হ্যাঁ',
+                    style: TextStyle(color: Colors.green[200], fontSize: 16),
+                  ),
                 ),
-                const SizedBox(height: 15),
-                const Text(
-                  'আপনি কি নিশ্চিত যে আপনি লোকেশন শেয়ার বন্ধ করতে চান?',
-                  style: TextStyle(color: Colors.white, fontSize: 16),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    TextButton(
-                      onPressed: () {
-                        setState(() {
-                          _isSharingLocation = false;
-                          _statusRef.update({'status': false});
-                          _stopLocationUpdates();
-                          print("Stopping location sharing on line 176!");
-                        });
-                        Navigator.of(context).pop();
-                      },
-                      child: Text(
-                        'হ্যাঁ',
-                        style:
-                            TextStyle(color: Colors.green[200], fontSize: 16),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      child: const Text(
-                        'না',
-                        style: TextStyle(color: Colors.red, fontSize: 16),
-                      ),
-                    ),
-                  ],
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text(
+                    'না',
+                    style: TextStyle(color: Colors.red, fontSize: 16),
+                  ),
                 ),
               ],
             ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 
@@ -285,57 +288,7 @@ class _MapScreenState extends State<MapScreen> {
   Future<bool> _onWillPop() async {
     final bool? shouldGoBack = await showDialog<bool>(
       context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.black, // Dark theme for dialog
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'লোকেশন শেয়ার বন্ধ করুন',
-                style: TextStyle(color: Colors.white, fontSize: 18),
-              ),
-              const SizedBox(height: 15),
-              const Text(
-                'আপনি কি নিশ্চিত যে আপনি লোকেশন শেয়ার বন্ধ করতে চান?',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  TextButton(
-                    onPressed: () {
-                      setState(() {
-                        _isSharingLocation = false;
-                        _statusRef.update({'status': false});
-                        _stopLocationUpdates();
-                        print("Stopping location sharing on line 176!");
-                      });
-                      Navigator.of(context).pop();
-                    },
-                    child: Text(
-                      'হ্যাঁ',
-                      style: TextStyle(color: Colors.green[200], fontSize: 16),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
-                    child: const Text(
-                      'না',
-                      style: TextStyle(color: Colors.red, fontSize: 16),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+      builder: (context) => dialoguePromt(),
     );
 
     if (shouldGoBack == true) {
