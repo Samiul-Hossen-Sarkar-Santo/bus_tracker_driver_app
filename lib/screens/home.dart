@@ -1,5 +1,7 @@
+import 'package:bus_tracker_driver_app/screens/login.dart';
 import 'package:bus_tracker_driver_app/screens/map_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Home extends StatefulWidget {
   @override
@@ -42,6 +44,55 @@ class _HomeState extends State<Home> {
     );
   }
 
+  SharedPreferences? _prefs;
+  bool _isLoggedIn = false;
+
+  void _initPrefs() async {
+    _prefs = await SharedPreferences.getInstance();
+
+    _getPrefs();
+  }
+
+  void _getPrefs() async {
+    setState(() {
+      _isLoggedIn = _prefs?.getBool('isLoggedIn') ?? false;
+    });
+    print("Login status retrieved from SharedPreferences: $_isLoggedIn");
+  }
+
+  void _setPrefs() async {
+    await _prefs?.setBool('isLoggedIn', true);
+    print("Login status saved to SharedPreferences");
+  }
+
+  Widget logoutButton() {
+    return IconButton(
+      icon: const Icon(
+        Icons.logout,
+        color: Colors.white,
+      ),
+      onPressed: () {
+        _getPrefs();
+        if (_isLoggedIn) {
+          _prefs?.setBool('isLoggedIn', false);
+          print("User logged out");
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const DriverLoginPage(),
+            ),
+          );
+        }
+      },
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _initPrefs();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -62,6 +113,9 @@ class _HomeState extends State<Home> {
         iconTheme: const IconThemeData(
           color: Colors.white, // Back button color
         ),
+        actions: [
+          logoutButton(),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.only(top: 20.0, left: 10.0, right: 10.0),

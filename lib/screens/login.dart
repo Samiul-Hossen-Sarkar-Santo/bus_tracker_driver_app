@@ -12,6 +12,8 @@ class DriverLoginPage extends StatefulWidget {
 
 class _DriverLoginPageState extends State<DriverLoginPage> {
   SharedPreferences? _prefs;
+  // Add a FocusNode for the username field
+  final FocusNode _usernameFocusNode = FocusNode();
 
   void _initPrefs() async {
     _prefs = await SharedPreferences.getInstance();
@@ -60,6 +62,13 @@ class _DriverLoginPageState extends State<DriverLoginPage> {
   }
 
   @override
+  void dispose() {
+    // Dispose the FocusNode when not needed anymore
+    _usernameFocusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
@@ -104,6 +113,12 @@ class _DriverLoginPageState extends State<DriverLoginPage> {
                 ),
                 const SizedBox(height: 20),
                 TextField(
+                  //focusNode: _usernameFocusNode,
+                  onChanged: (value) {
+                    setState(() {
+                      _errorMessage = "";
+                    });
+                  },
                   cursorColor: Colors.green[900],
                   controller: _usernameController,
                   decoration: InputDecoration(
@@ -248,6 +263,11 @@ class _DriverLoginPageState extends State<DriverLoginPage> {
     } else {
       setState(() {
         _errorMessage = "ভুল ইউজারনেম অথবা পাসওয়ার্ড দেয়া হয়েছে";
+        // Clear the text fields if credentials are wrong
+        _passwordController.clear();
+        _usernameController.clear();
+        // Focus on the username text field after clearing it
+        FocusScope.of(context).requestFocus(_usernameFocusNode);
       });
     }
   }
