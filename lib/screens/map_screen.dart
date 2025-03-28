@@ -319,7 +319,7 @@ class _MapScreenState extends State<MapScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text(
-            'Driver Map',
+            'ড্রাইভার ম্যাপ',
             style: TextStyle(
               color: Colors.white,
             ),

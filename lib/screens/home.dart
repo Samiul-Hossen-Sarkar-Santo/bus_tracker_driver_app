@@ -2,6 +2,8 @@ import 'package:bus_tracker_driver_app/screens/login.dart';
 import 'package:bus_tracker_driver_app/screens/map_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:in_app_update/in_app_update.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class Home extends StatefulWidget {
   @override
@@ -31,6 +33,59 @@ class _HomeState extends State<Home> {
     "সিটি কলেজ",
     "জাহাঙ্গীর গেট",
   ];
+
+  Future<String> getCurrentVersion() async {
+    PackageInfo packageInfo = await PackageInfo.fromPlatform();
+    return packageInfo.version;
+  }
+
+  void checkForUpdate() async {
+    final updateInfo = await InAppUpdate.checkForUpdate();
+    if (updateInfo.updateAvailability == UpdateAvailability.updateAvailable) {
+      showUpdateDialog();
+    }
+  }
+
+  void showUpdateDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('আপডেট করুন'),
+        backgroundColor: Colors.grey[800],
+        content: const Text(
+          'অ্যাপটির নতুন আপডেট এসেছে। নতুন সব ফিচার উপভোগ করতে, আপডেট করুন।',
+          style: TextStyle(
+            color: Colors.white,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop(); // Close the dialog
+            },
+            child: const Text(
+              'পরে',
+              style: TextStyle(
+                color: Colors.red,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              InAppUpdate.performImmediateUpdate(); // Trigger the update
+            },
+            child: Text(
+              'আপডেট করুন',
+              style: TextStyle(
+                color: Colors.green[900],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   void routeNameConversion(int index, int id) {
     setState(() {
