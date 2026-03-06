@@ -14,6 +14,14 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
 
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localProperties.load(new FileInputStream(localPropertiesFile))
+}
+
+def mapsApiKey = localProperties.getProperty('MAPS_API_KEY', '')
+
 android {
     namespace = "com.bus_tracker_driver_app.app"
     compileSdk = 36
@@ -37,6 +45,7 @@ android {
         targetSdk = 36
         versionCode = 3
         versionName = "1.0.2"
+        manifestPlaceholders += [MAPS_API_KEY: mapsApiKey]
     }
 
     signingConfigs {

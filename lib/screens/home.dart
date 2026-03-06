@@ -6,6 +6,7 @@ import 'package:bus_tracker_driver_app/data/bus_catalog.dart';
 import 'package:bus_tracker_driver_app/services/share_backend_service.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
 import 'package:permission_handler/permission_handler.dart' as perms;
 
@@ -45,6 +46,8 @@ class _HomeState extends State<Home> {
   DateTime? _shareEndsAt;
   DateTime? _lastPushedLocationAt;
   Duration _remainingDuration = _maxShareDuration;
+  LatLng? _currentPreviewLocation;
+  GoogleMapController? _previewMapController;
 
   int _activeUserCount = 0;
   Map<String, bool> _busStatusMap = {};
@@ -215,6 +218,7 @@ class _HomeState extends State<Home> {
         _selectedRouteId = bus.routeId;
         _selectedBus = bus;
         _lastPushedLocationAt = DateTime.now();
+        _currentPreviewLocation = LatLng(latitude, longitude);
       });
 
       _showSnackBar('Sharing started for bus ${bus.busNumber}.');
@@ -253,6 +257,8 @@ class _HomeState extends State<Home> {
     if (latitude == null || longitude == null) return;
     if (!_isValidCoordinate(latitude, longitude)) return;
 
+    _updatePreviewLocation(latitude, longitude);
+
     final now = DateTime.now();
     if (_lastPushedLocationAt != null &&
         now.difference(_lastPushedLocationAt!) < _locationPushInterval) {
@@ -288,6 +294,35 @@ class _HomeState extends State<Home> {
 
   bool _isValidCoordinate(double lat, double long) {
     return lat >= -90 && lat <= 90 && long >= -180 && long <= 180;
+  }
+
+  void _updatePreviewLocation(double latitude, double longitude) {
+    final nextLocation = LatLng(latitude, longitude);
+    final prevLocation = _currentPreviewLocation;
+    final didMove = prevLocation == null ||
+        (prevLocation.latitude - latitude).abs() > 0.000001 ||
+        (prevLocation.longitude - longitude).abs() > 0.000001;
+
+    if (!didMove) return;
+
+    if (mounted) {
+      setState(() {
+        _currentPreviewLocation = nextLocation;
+      });
+    } else {
+      _currentPreviewLocation = nextLocation;
+    }
+
+    final controller = _previewMapController;
+    if (controller != null) {
+      unawaited(
+        controller.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(target: nextLocation, zoom: 16),
+          ),
+        ),
+      );
+    }
   }
 
   Future<bool> _ensureLocationPermissions() async {
@@ -433,6 +468,7 @@ class _HomeState extends State<Home> {
         _shareEndsAt = null;
         _lastPushedLocationAt = null;
         _remainingDuration = _maxShareDuration;
+        _currentPreviewLocation = null;
       });
 
       _showSnackBar(
@@ -511,6 +547,8 @@ class _HomeState extends State<Home> {
     _locationSubscription?.cancel();
     _autoStopTimer?.cancel();
     _countdownTimer?.cancel();
+    _previewMapController?.dispose();
+    _previewMapController = null;
 
     unawaited(_locationService.enableBackgroundMode(enable: false));
     AwesomeNotifications().cancel(10);
@@ -710,6 +748,67 @@ class _HomeState extends State<Home> {
                           Text('Route: ${_activeBus!.routeName}'),
                           Text('Bus: ${_activeBus!.busNumber}'),
                           Text('Driver: ${_activeBus!.driverName}'),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'Current Location',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: SizedBox(
+                              height: 150,
+                              width: double.infinity,
+                              child: _currentPreviewLocation == null
+                                  ? Container(
+                                      color: Colors.white,
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        'Waiting for location...',
+                                        style:
+                                            TextStyle(color: Colors.grey[700]),
+                                      ),
+                                    )
+                                  : IgnorePointer(
+                                      child: GoogleMap(
+                                        initialCameraPosition: CameraPosition(
+                                          target: _currentPreviewLocation!,
+                                          zoom: 16,
+                                        ),
+                                        myLocationEnabled: true,
+                                        myLocationButtonEnabled: false,
+                                        zoomControlsEnabled: false,
+                                        mapToolbarEnabled: false,
+                                        compassEnabled: false,
+                                        scrollGesturesEnabled: false,
+                                        zoomGesturesEnabled: false,
+                                        rotateGesturesEnabled: false,
+                                        tiltGesturesEnabled: false,
+                                        markers: {
+                                          Marker(
+                                            markerId:
+                                                const MarkerId('current_bus'),
+                                            position: _currentPreviewLocation!,
+                                          ),
+                                        },
+                                        onMapCreated: (controller) {
+                                          _previewMapController = controller;
+                                        },
+                                      ),
+                                    ),
+                            ),
+                          ),
+                          if (_currentPreviewLocation != null) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              'Lat: ${_currentPreviewLocation!.latitude.toStringAsFixed(6)}  '
+                              'Lng: ${_currentPreviewLocation!.longitude.toStringAsFixed(6)}',
+                              style: TextStyle(
+                                color: Colors.grey[700],
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 10),
                           Text(
                             'Auto stop in: ${_formatDuration(_remainingDuration)}',
