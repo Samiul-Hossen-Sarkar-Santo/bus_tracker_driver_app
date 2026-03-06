@@ -1,7 +1,5 @@
 import 'package:bus_tracker_driver_app/screens/home.dart';
-import 'package:bus_tracker_driver_app/screens/login.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class LoadingScreen extends StatefulWidget {
   const LoadingScreen({super.key});
@@ -17,23 +15,9 @@ class _LoadingScreenState extends State<LoadingScreen>
   late Animation<double> _fadeAnimation;
   late Animation<double> _morphAnimation;
 
-  SharedPreferences? _prefs;
-  bool _isLoggedIn = false;
-
-  void _getPrefs() async {
-    _isLoggedIn = _prefs?.getBool('isLoggedIn') ?? false;
-    print('Login status retrieved from SharedPreferences: $_isLoggedIn');
-  }
-
-  void _initPrefs() async {
-    _prefs = await SharedPreferences.getInstance();
-    _getPrefs();
-  }
-
   @override
   void initState() {
     super.initState();
-    _initPrefs();
 
     // Initialize animation controller
     _animationController = AnimationController(
@@ -60,23 +44,14 @@ class _LoadingScreenState extends State<LoadingScreen>
     // Start animations
     _animationController.forward();
 
-    // Schedule the transition to HomeScreen
     Future.delayed(const Duration(seconds: 4), () {
-      if (_isLoggedIn) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => Home(),
-          ),
-        );
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const DriverLoginPage(),
-          ),
-        );
-      }
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const Home(),
+        ),
+      );
     });
   }
 
