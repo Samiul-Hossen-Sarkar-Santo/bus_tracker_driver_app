@@ -102,7 +102,7 @@ class _LoadingScreenState extends State<LoadingScreen>
           child: FadeTransition(
             opacity: _fadeAnimation,
             child: const Text(
-              'Welcome to our app!',
+              'By the Students, For the Students!',
               style: TextStyle(fontSize: 20.0),
             ),
           ),
