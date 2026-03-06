@@ -5,7 +5,6 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   awesome_notifications
   firebase_core
-  geolocator_windows
   permission_handler_windows
 )
 

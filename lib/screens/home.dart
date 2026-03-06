@@ -10,9 +10,6 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
 import 'package:permission_handler/permission_handler.dart' as perms;
 
-// Legacy global kept so older screens compile if they still import this file.
-String selectedRoute = '';
-
 class Home extends StatefulWidget {
   const Home({super.key});
 
