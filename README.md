@@ -92,6 +92,18 @@ Ensure `android/app/google-services.json` matches package name:
 
 - `com.bus_tracker_driver_app.app`
 
+This file is intentionally ignored from Git for security. Keep your own local copy in:
+
+- `android/app/google-services.json`
+
+### 1.1 Generate FlutterFire options locally
+
+`lib/firebase_options.dart` is also ignored from Git. Generate it on each machine using FlutterFire CLI:
+
+```bash
+flutterfire configure
+```
+
 ### 2. Deploy backend functions
 
 ```bash
@@ -118,6 +130,28 @@ flutter run --dart-define=SHARING_API_BASE_URL=https://asia-southeast1-<project-
 If not provided, app falls back to:
 
 `https://asia-southeast1-bus-tracker-bbaa6.cloudfunctions.net`
+
+## Admin Reset Endpoint (Protected)
+
+The backend includes `forceStopAllSharing` for emergency reset of all active sharing sessions.
+
+Security requirements:
+
+- Endpoint requires `x-admin-key` header.
+- Key is loaded from `functions/.env` as `FORCE_STOP_ADMIN_KEY`.
+- `functions/.env` is ignored from Git.
+- Use `functions/.env.example` as template.
+
+Example (PowerShell):
+
+```powershell
+Set-Location functions
+$line = (Get-Content .env | Where-Object { $_ -match '^FORCE_STOP_ADMIN_KEY=' } | Select-Object -First 1)
+$adminKey = $line.Substring('FORCE_STOP_ADMIN_KEY='.Length).Trim()
+$headers = @{ 'x-admin-key' = $adminKey }
+$body = @{ reason = 'manual_admin_reset' } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri 'https://forcestopallsharing-rr2r4culhq-as.a.run.app' -Headers $headers -ContentType 'application/json' -Body $body
+```
 
 ## Run Locally
 
@@ -161,3 +195,4 @@ flutter build apk --debug
 
 - Do not commit private keys or secrets.
 - `android/local.properties` is machine-local and suitable for local key storage.
+- `android/app/google-services.json`, `lib/firebase_options.dart`, and `functions/.env` are intentionally kept out of Git.

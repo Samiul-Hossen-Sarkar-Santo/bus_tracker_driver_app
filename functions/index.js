@@ -8,6 +8,7 @@ const db = admin.database();
 
 const REGION = "asia-southeast1";
 const SESSION_TTL_MS = 3 * 60 * 60 * 1000;
+const FORCE_STOP_ADMIN_KEY_ENV = "FORCE_STOP_ADMIN_KEY";
 
 function sendJson(res, statusCode, body) {
   res.status(statusCode).set("Content-Type", "application/json").send(body);
@@ -25,6 +26,10 @@ function isValidBusId(value) {
   return typeof value === "string" && /^[A-Za-z0-9_-]{2,80}$/.test(value);
 }
 
+function isValidClientInstanceId(value) {
+  return typeof value === "string" && /^[A-Za-z0-9_-]{12,120}$/.test(value);
+}
+
 function parseLocation(location) {
   if (!location || typeof location !== "object") return null;
   const lat = Number(location.lat);
@@ -32,6 +37,35 @@ function parseLocation(location) {
   if (!Number.isFinite(lat) || !Number.isFinite(long)) return null;
   if (lat < -90 || lat > 90 || long < -180 || long > 180) return null;
   return {lat, long};
+}
+
+function safeEquals(left, right) {
+  const leftBuffer = Buffer.from(left, "utf8");
+  const rightBuffer = Buffer.from(right, "utf8");
+  if (leftBuffer.length !== rightBuffer.length) return false;
+  return crypto.timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function isAuthorizedAdminRequest(req) {
+  const expectedAdminKey = process.env[FORCE_STOP_ADMIN_KEY_ENV];
+  if (!expectedAdminKey || !expectedAdminKey.trim()) {
+    return {
+      ok: false,
+      statusCode: 503,
+      error: `Missing ${FORCE_STOP_ADMIN_KEY_ENV} server configuration.`,
+    };
+  }
+
+  const providedAdminKey = req.get("x-admin-key");
+  if (typeof providedAdminKey !== "string" || !providedAdminKey.trim()) {
+    return {ok: false, statusCode: 401, error: "Missing admin key."};
+  }
+
+  if (!safeEquals(expectedAdminKey, providedAdminKey)) {
+    return {ok: false, statusCode: 403, error: "Invalid admin key."};
+  }
+
+  return {ok: true};
 }
 
 async function incrementCounter(path, amount = 1) {
@@ -70,6 +104,7 @@ function createSessionPayload({busId, body, nowMs, expiresAtMs, sessionId}) {
   return {
     busId,
     sessionId,
+    clientInstanceId: body.clientInstanceId,
     active: true,
     startedAtMs: nowMs,
     expiresAtMs,
@@ -87,6 +122,7 @@ exports.startSharing = onRequest(
 
   const body = req.body || {};
   const busId = body.busId;
+  const clientInstanceId = body.clientInstanceId;
   const location = parseLocation(body.location);
 
   if (!isValidBusId(busId)) {
@@ -97,6 +133,10 @@ exports.startSharing = onRequest(
     sendJson(res, 400, {ok: false, error: "Invalid location payload."});
     return;
   }
+  if (!isValidClientInstanceId(clientInstanceId)) {
+    sendJson(res, 400, {ok: false, error: "Invalid clientInstanceId."});
+    return;
+  }
 
   const nowMs = Date.now();
   const expiresAtMs = nowMs + SESSION_TTL_MS;
@@ -104,6 +144,36 @@ exports.startSharing = onRequest(
   const sessionRef = db.ref(`ActiveShareSessions/${busId}`);
 
   try {
+    const sessionsSnap = await db.ref("ActiveShareSessions").get();
+    if (sessionsSnap.exists()) {
+      let existingBusId = null;
+
+      sessionsSnap.forEach((child) => {
+        const activeBusId = child.key;
+        const session = child.val();
+        if (
+          activeBusId &&
+          activeBusId !== busId &&
+          session &&
+          session.active === true &&
+          session.clientInstanceId === clientInstanceId &&
+          typeof session.expiresAtMs === "number" &&
+          session.expiresAtMs > nowMs
+        ) {
+          existingBusId = activeBusId;
+        }
+      });
+
+      if (existingBusId) {
+        sendJson(res, 409, {
+          ok: false,
+          error: "This device already has an active sharing session.",
+          busId: existingBusId,
+        });
+        return;
+      }
+    }
+
     const tx = await sessionRef.transaction((current) => {
       if (
         current &&
@@ -228,6 +298,73 @@ exports.updateLocation = onRequest(
     },
 );
 
+exports.findActiveSessionByClient = onRequest(
+    {region: REGION, cors: true, invoker: "public"},
+    async (req, res) => {
+  if (rejectWrongMethod(req, res)) return;
+
+  const body = req.body || {};
+  const clientInstanceId = body.clientInstanceId;
+  if (!isValidClientInstanceId(clientInstanceId)) {
+    sendJson(res, 400, {ok: false, error: "Invalid clientInstanceId."});
+    return;
+  }
+
+  const nowMs = Date.now();
+
+  try {
+    const sessionsSnap = await db.ref("ActiveShareSessions").get();
+    if (!sessionsSnap.exists()) {
+      sendJson(res, 200, {ok: true, found: false});
+      return;
+    }
+
+    let match = null;
+    sessionsSnap.forEach((child) => {
+      const busId = child.key;
+      const session = child.val();
+      if (
+        !busId ||
+        !session ||
+        session.active !== true ||
+        session.clientInstanceId !== clientInstanceId ||
+        typeof session.sessionId !== "string" ||
+        typeof session.expiresAtMs !== "number" ||
+        session.expiresAtMs <= nowMs
+      ) {
+        return;
+      }
+
+      if (!match || session.expiresAtMs > match.expiresAtMs) {
+        match = {
+          busId,
+          sessionId: session.sessionId,
+          expiresAtMs: session.expiresAtMs,
+        };
+      }
+    });
+
+    if (!match) {
+      sendJson(res, 200, {ok: true, found: false});
+      return;
+    }
+
+    sendJson(res, 200, {
+      ok: true,
+      found: true,
+      busId: match.busId,
+      sessionId: match.sessionId,
+      expiresAtMs: match.expiresAtMs,
+    });
+  } catch (error) {
+    sendJson(res, 500, {
+      ok: false,
+      error: `findActiveSessionByClient failed: ${error.message}`,
+    });
+  }
+    },
+);
+
 exports.stopSharing = onRequest(
     {region: REGION, cors: true, invoker: "public"},
     async (req, res) => {
@@ -284,6 +421,84 @@ exports.stopSharing = onRequest(
     sendJson(res, 500, {
       ok: false,
       error: `stopSharing failed: ${error.message}`,
+    });
+  }
+    },
+);
+
+exports.forceStopAllSharing = onRequest(
+    {region: REGION, cors: true, invoker: "public"},
+    async (req, res) => {
+  if (rejectWrongMethod(req, res)) return;
+
+  const authResult = isAuthorizedAdminRequest(req);
+  if (!authResult.ok) {
+    sendJson(res, authResult.statusCode, {ok: false, error: authResult.error});
+    return;
+  }
+
+  const body = req.body || {};
+  const reason = typeof body.reason === "string" && body.reason.trim()
+    ? body.reason.trim()
+    : "admin_force_stop_all";
+  const nowMs = Date.now();
+
+  try {
+    const sessionsSnap = await db.ref("ActiveShareSessions").get();
+    if (!sessionsSnap.exists()) {
+      await db.ref("ServerMetrics/sharing").update({
+        activeSessions: 0,
+        lastSyncedAt: admin.database.ServerValue.TIMESTAMP,
+      });
+      sendJson(res, 200, {
+        ok: true,
+        stoppedCount: 0,
+        stoppedBusIds: [],
+      });
+      return;
+    }
+
+    const rootUpdates = {
+      "ServerMetrics/sharing/activeSessions": 0,
+      "ServerMetrics/sharing/lastSyncedAt": admin.database.ServerValue.TIMESTAMP,
+    };
+    const stoppedBusIds = [];
+
+    sessionsSnap.forEach((child) => {
+      const busId = child.key;
+      const session = child.val();
+      if (
+        !busId ||
+        !session ||
+        session.active !== true ||
+        typeof session.expiresAtMs !== "number" ||
+        session.expiresAtMs <= nowMs
+      ) {
+        return;
+      }
+
+      rootUpdates[`ActiveShareSessions/${busId}/active`] = false;
+      rootUpdates[`ActiveShareSessions/${busId}/endedAtMs`] = nowMs;
+      rootUpdates[`ActiveShareSessions/${busId}/endedReason`] = reason;
+      rootUpdates[`ActiveShareSessions/${busId}/serverEndedAt`] =
+        admin.database.ServerValue.TIMESTAMP;
+      rootUpdates[`Buses/${busId}/status`] = false;
+      stoppedBusIds.push(busId);
+    });
+
+    if (stoppedBusIds.length > 0) {
+      await db.ref().update(rootUpdates);
+    }
+
+    sendJson(res, 200, {
+      ok: true,
+      stoppedCount: stoppedBusIds.length,
+      stoppedBusIds,
+    });
+  } catch (error) {
+    sendJson(res, 500, {
+      ok: false,
+      error: `forceStopAllSharing failed: ${error.message}`,
     });
   }
     },

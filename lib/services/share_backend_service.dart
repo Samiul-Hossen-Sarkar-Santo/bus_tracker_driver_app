@@ -13,6 +13,18 @@ class ShareSessionStartResult {
   });
 }
 
+class ShareActiveSessionResult {
+  final String busId;
+  final String sessionId;
+  final DateTime expiresAt;
+
+  const ShareActiveSessionResult({
+    required this.busId,
+    required this.sessionId,
+    required this.expiresAt,
+  });
+}
+
 class ShareBackendService {
   static const String _defaultApiBaseUrl =
       'https://asia-southeast1-bus-tracker-bbaa6.cloudfunctions.net';
@@ -76,6 +88,7 @@ class ShareBackendService {
 
   static Future<ShareSessionStartResult> startSharing({
     required BusCatalogItem bus,
+    required String clientInstanceId,
     required double latitude,
     required double longitude,
   }) async {
@@ -85,6 +98,7 @@ class ShareBackendService {
       'routeName': bus.routeName,
       'busNumber': bus.busNumber,
       'driverName': bus.driverName,
+      'clientInstanceId': clientInstanceId,
       'location': {
         'lat': latitude,
         'long': longitude,
@@ -99,6 +113,35 @@ class ShareBackendService {
     }
 
     return ShareSessionStartResult(
+      sessionId: sessionId,
+      expiresAt: DateTime.fromMillisecondsSinceEpoch(expiresAtMs.toInt()),
+    );
+  }
+
+  static Future<ShareActiveSessionResult?> findActiveSessionByClient({
+    required String clientInstanceId,
+  }) async {
+    final response = await _postJson('findActiveSessionByClient', {
+      'clientInstanceId': clientInstanceId,
+    });
+
+    final found = response['found'];
+    if (found != true) return null;
+
+    final busId = response['busId']?.toString();
+    final sessionId = response['sessionId']?.toString();
+    final expiresAtMs = response['expiresAtMs'];
+
+    if (busId == null ||
+        busId.isEmpty ||
+        sessionId == null ||
+        sessionId.isEmpty ||
+        expiresAtMs is! num) {
+      throw Exception('Invalid backend response for findActiveSessionByClient.');
+    }
+
+    return ShareActiveSessionResult(
+      busId: busId,
       sessionId: sessionId,
       expiresAt: DateTime.fromMillisecondsSinceEpoch(expiresAtMs.toInt()),
     );

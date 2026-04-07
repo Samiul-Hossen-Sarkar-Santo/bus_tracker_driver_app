@@ -9,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
 import 'package:permission_handler/permission_handler.dart' as perms;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -20,6 +22,10 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   static const Duration _maxShareDuration = Duration(hours: 3);
   static const Duration _locationPushInterval = Duration(seconds: 5);
+  static const String _sessionBusIdKey = 'active_share_bus_id';
+  static const String _sessionIdKey = 'active_share_session_id';
+  static const String _sessionExpiresAtMsKey = 'active_share_expires_at_ms';
+  static const String _clientInstanceIdKey = 'client_instance_id';
 
   final Location _locationService = Location();
   final DatabaseReference _busesRef = FirebaseDatabase.instance.ref('Buses');
@@ -31,6 +37,7 @@ class _HomeState extends State<Home> {
   Timer? _countdownTimer;
 
   String? _selectedRouteId;
+  String? _clientInstanceId;
   BusCatalogItem? _selectedBus;
   BusCatalogItem? _activeBus;
   String? _activeSessionId;
@@ -55,6 +62,140 @@ class _HomeState extends State<Home> {
     super.initState();
     _listenBusStatuses();
     _requestNotificationPermission();
+    unawaited(_initializeSharingRecovery());
+  }
+
+  Future<void> _initializeSharingRecovery() async {
+    await _ensureClientInstanceId();
+    await _restoreSharingSession();
+  }
+
+  Future<String> _ensureClientInstanceId() async {
+    final existing = _clientInstanceId;
+    if (existing != null && existing.isNotEmpty) return existing;
+
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getString(_clientInstanceIdKey);
+    if (stored != null && stored.isNotEmpty) {
+      _clientInstanceId = stored;
+      return stored;
+    }
+
+    final generated = const Uuid().v4().replaceAll('-', '_');
+    await prefs.setString(_clientInstanceIdKey, generated);
+    _clientInstanceId = generated;
+    return generated;
+  }
+
+  Future<void> _persistActiveSession({
+    required String busId,
+    required String sessionId,
+    required DateTime expiresAt,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_sessionBusIdKey, busId);
+    await prefs.setString(_sessionIdKey, sessionId);
+    await prefs.setInt(_sessionExpiresAtMsKey, expiresAt.millisecondsSinceEpoch);
+  }
+
+  Future<void> _clearPersistedActiveSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_sessionBusIdKey);
+    await prefs.remove(_sessionIdKey);
+    await prefs.remove(_sessionExpiresAtMsKey);
+  }
+
+  Future<void> _restoreSharingSession() async {
+    final clientInstanceId = await _ensureClientInstanceId();
+
+    try {
+      final activeSession = await ShareBackendService.findActiveSessionByClient(
+        clientInstanceId: clientInstanceId,
+      );
+      if (activeSession == null) {
+        await _clearPersistedActiveSession();
+        return;
+      }
+
+      final nowMs = DateTime.now().millisecondsSinceEpoch;
+      final busId = activeSession.busId;
+      if (activeSession.expiresAt.millisecondsSinceEpoch <= nowMs) {
+        await _clearPersistedActiveSession();
+        return;
+      }
+
+      final bus = busCatalog.where((item) => item.busId == busId).firstOrNull;
+      if (bus == null) {
+        await _clearPersistedActiveSession();
+        return;
+      }
+
+      final recoveredSessionId = activeSession.sessionId;
+      final expiresAt = activeSession.expiresAt;
+      _startAutoStopCountdown(expiresAt);
+
+      LatLng? preview;
+      final busSnapshot = await _busesRef.child(busId).get();
+      if (busSnapshot.exists && busSnapshot.value is Map<Object?, Object?>) {
+        final busData = busSnapshot.value as Map<Object?, Object?>;
+        final locationRaw = busData['location'];
+        if (locationRaw is Map<Object?, Object?>) {
+          final latRaw = locationRaw['lat'];
+          final longRaw = locationRaw['long'];
+          final latitude = latRaw is num ? latRaw.toDouble() : null;
+          final longitude = longRaw is num ? longRaw.toDouble() : null;
+          if (latitude != null &&
+              longitude != null &&
+              _isValidCoordinate(latitude, longitude)) {
+            preview = LatLng(latitude, longitude);
+          }
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _isSharingLocation = true;
+        _activeBus = bus;
+        _activeSessionId = recoveredSessionId;
+        _selectedRouteId = bus.routeId;
+        _selectedBus = bus;
+        _shareEndsAt = expiresAt;
+        _remainingDuration = expiresAt.difference(DateTime.now()).isNegative
+            ? Duration.zero
+            : expiresAt.difference(DateTime.now());
+        _currentPreviewLocation = preview;
+      });
+
+      await _persistActiveSession(
+        busId: bus.busId,
+        sessionId: recoveredSessionId,
+        expiresAt: expiresAt,
+      );
+
+      // Reattach platform services as best effort so restore never hides sharing UI.
+      try {
+        await _locationService.enableBackgroundMode(enable: true);
+      } catch (_) {}
+
+      try {
+        await _locationService.changeNotificationOptions(
+          channelName: 'location_tracking',
+          title: 'Bus location sharing is running',
+          onTapBringToFront: true,
+          iconName: 'driver_app_icon',
+        );
+      } catch (_) {}
+
+      _startForegroundNotification(bus);
+
+      await _locationSubscription?.cancel();
+      _locationSubscription =
+          _locationService.onLocationChanged.listen((locationData) {
+        unawaited(_handleLocationUpdate(locationData));
+      });
+    } catch (_) {
+      // Keep persisted session; transient restore failures can be retried on next launch.
+    }
   }
 
   void _requestNotificationPermission() {
@@ -168,6 +309,8 @@ class _HomeState extends State<Home> {
     ShareSessionStartResult? startResult;
 
     try {
+      final clientInstanceId = await _ensureClientInstanceId();
+
       if (_isBusUnavailable(bus)) {
         throw Exception('This bus is currently unavailable.');
       }
@@ -186,6 +329,7 @@ class _HomeState extends State<Home> {
 
       startResult = await ShareBackendService.startSharing(
         bus: bus,
+        clientInstanceId: clientInstanceId,
         latitude: latitude,
         longitude: longitude,
       );
@@ -218,6 +362,12 @@ class _HomeState extends State<Home> {
         _currentPreviewLocation = LatLng(latitude, longitude);
       });
 
+      await _persistActiveSession(
+        busId: bus.busId,
+        sessionId: startResult.sessionId,
+        expiresAt: startResult.expiresAt,
+      );
+
       _showSnackBar('Sharing started for bus ${bus.busNumber}.');
     } catch (e) {
       // If backend lock started but local setup failed, release it.
@@ -236,10 +386,11 @@ class _HomeState extends State<Home> {
         _errorMessage = e.toString().replaceFirst('Exception: ', '');
       });
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _isStartingSharing = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isStartingSharing = false;
+        });
+      }
     }
   }
 
@@ -468,6 +619,8 @@ class _HomeState extends State<Home> {
         _currentPreviewLocation = null;
       });
 
+      await _clearPersistedActiveSession();
+
       _showSnackBar(
         autoStopped
             ? 'Sharing stopped automatically after timeout.'
@@ -479,10 +632,11 @@ class _HomeState extends State<Home> {
         _errorMessage = 'Failed to stop sharing: ${e.toString().replaceFirst('Exception: ', '')}';
       });
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _isStoppingSharing = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isStoppingSharing = false;
+        });
+      }
     }
   }
 
@@ -517,7 +671,7 @@ class _HomeState extends State<Home> {
             TextButton(
               onPressed: () async {
                 await perms.openAppSettings();
-                if (!mounted) return;
+                if (!context.mounted) return;
                 Navigator.pop(context);
               },
               child: const Text('Open Settings'),
@@ -537,9 +691,6 @@ class _HomeState extends State<Home> {
 
   @override
   void dispose() {
-    final activeBus = _activeBus;
-    final sessionId = _activeSessionId;
-
     _busesSubscription?.cancel();
     _locationSubscription?.cancel();
     _autoStopTimer?.cancel();
@@ -547,17 +698,9 @@ class _HomeState extends State<Home> {
     _previewMapController?.dispose();
     _previewMapController = null;
 
-    unawaited(_locationService.enableBackgroundMode(enable: false));
-    AwesomeNotifications().cancel(10);
-
-    if (activeBus != null && sessionId != null) {
-      unawaited(
-        ShareBackendService.stopSharing(
-          busId: activeBus.busId,
-          sessionId: sessionId,
-          reason: 'app_dispose',
-        ),
-      );
+    if (!_isSharingLocation) {
+      unawaited(_locationService.enableBackgroundMode(enable: false));
+      AwesomeNotifications().cancel(10);
     }
 
     super.dispose();
