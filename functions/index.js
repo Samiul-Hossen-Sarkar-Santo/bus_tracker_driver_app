@@ -287,7 +287,8 @@ exports.updateLocation = onRequest(
       [`ActiveShareSessions/${busId}/lastLocationAtMs`]: nowMs,
     });
 
-    await incrementCounter("ServerMetrics/sharing/totalLocationUpdates", 1);
+    incrementCounter("ServerMetrics/sharing/totalLocationUpdates", 1)
+      .catch((error) => console.error("totalLocationUpdates metric failed", error));
     sendJson(res, 200, {ok: true, expiresAtMs: session.expiresAtMs});
   } catch (error) {
     sendJson(res, 500, {

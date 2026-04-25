@@ -22,6 +22,7 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   static const Duration _maxShareDuration = Duration(hours: 3);
   static const Duration _locationPushInterval = Duration(seconds: 5);
+  static const int _maxSilentLocationUpdateFailures = 2;
   static const String _sessionBusIdKey = 'active_share_bus_id';
   static const String _sessionIdKey = 'active_share_session_id';
   static const String _sessionExpiresAtMsKey = 'active_share_expires_at_ms';
@@ -49,6 +50,7 @@ class _HomeState extends State<Home> {
 
   DateTime? _shareEndsAt;
   DateTime? _lastPushedLocationAt;
+  int _consecutiveLocationUpdateFailures = 0;
   Duration _remainingDuration = _maxShareDuration;
   LatLng? _currentPreviewLocation;
   GoogleMapController? _previewMapController;
@@ -422,6 +424,12 @@ class _HomeState extends State<Home> {
         longitude: longitude,
       );
       _lastPushedLocationAt = now;
+      _consecutiveLocationUpdateFailures = 0;
+      if (mounted && _errorMessage != null && _errorMessage!.startsWith('Location update issue:')) {
+        setState(() {
+          _errorMessage = null;
+        });
+      }
     } catch (e) {
       final message = e.toString().toLowerCase();
       if (message.contains('expired') || message.contains('inactive') || message.contains('session')) {
@@ -431,8 +439,17 @@ class _HomeState extends State<Home> {
           reason: 'expired_session',
         );
       } else if (mounted) {
+        _consecutiveLocationUpdateFailures += 1;
+        final isTimeout =
+            message.contains('timeoutexception') || message.contains('future not completed');
+        if (_consecutiveLocationUpdateFailures <= _maxSilentLocationUpdateFailures) {
+          return;
+        }
+        final normalized = isTimeout
+            ? 'Temporary network delay. Reconnecting automatically...'
+            : e.toString().replaceFirst('Exception: ', '');
         setState(() {
-          _errorMessage = 'Location update issue: ${e.toString().replaceFirst('Exception: ', '')}';
+          _errorMessage = 'Location update issue: $normalized';
         });
       }
     } finally {
@@ -615,6 +632,7 @@ class _HomeState extends State<Home> {
         _activeSessionId = null;
         _shareEndsAt = null;
         _lastPushedLocationAt = null;
+        _consecutiveLocationUpdateFailures = 0;
         _remainingDuration = _maxShareDuration;
         _currentPreviewLocation = null;
       });
